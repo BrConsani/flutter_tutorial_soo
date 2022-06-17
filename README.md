@@ -18,6 +18,11 @@
     - [main.dart](#maindart)
     - [my_app.dart](#myappdart)
     - [my_home_page.dart](#myhomepagedart)
+- [Projeto MyCountries](#projeto-mycountries)
+  - [Criando a página inicial](#criando-a-página-inicial)
+  - [Pacote http](#pacote-http)
+  - [Função getCountries()](#função-getcountries)
+  - [Criando o layout](#criando-o-layout)
 
 ## Requisitos
 
@@ -281,3 +286,143 @@ Componente responsável por organizar de cima para baixo seus `children` no espa
 Um `FloatingActionButton` é um botão de ícone circular que normalmente promove uma ação principal no aplicativo.
 
 Dentro do `FloatingActionButton` possuimos a propriedade `onPressed`, nela podemos passar nossa função `_incrementCounter`, dessa forma, sempre que clicarmos no botão de incremento, a função será chamada.
+
+## Projeto MyCountries
+
+Para mostrar como podemos integrar nosso front-end com o back-end iremos construir uma aplicação que deve listar o nome todos os países e suas bandeiras.
+
+Para isso iremos utilizar uma API pública que retorna esses dados (e muitos outros): `https://restcountries.com/v3.1/all`
+
+![My Countries Print](img/my_countries.png)
+
+### Criando a página inicial
+
+Para mostrar nossos dados iremos criar uma nova página chamada `my_countries`, com a ajuda de snippets do Visual Studio Code. Podemos criar um *StatefulWidget* usando o comando `stfl` gerando o seguinte código:
+
+```dart
+class MyCountries extends StatefulWidget {
+  const MyCountries({Key? key}) : super(key: key);
+
+  @override
+  State<MyCountries> createState() => _MyCountriesState();
+}
+
+class _MyCountriesState extends State<MyCountries> {
+  @override
+  Widget build(BuildContext context) {
+    
+  }
+}
+```
+
+Iremos utilizar um `Scaffold` e `AppBar` para nos auxiliar com a montagem inicial do layout, podemos adicionar ao método `build` o seguinte código:
+
+```dart
+Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: AppBar(title: const Text('Countries')),
+  );
+}
+```
+
+### Pacote http
+
+Para a listagem dos países iremos utilizar um `FutureBuilder`, esse Widget é responsável por executar uma função `Future` e montar o layout enquanto a função processa e após receber uma resposta. Dessa forma conseguimos adicionar um loading enquanto esperamos a requisição completar e montar a listagem quando obtermos uma resposta.
+
+Para realizar a requisição iremos utilizar o pacote `http` mantido pelo time do Flutter. Para instalar a dependência em nosso projeto basta executar o seguinte comando no terminal:
+
+```bash
+flutter pub add http
+```
+
+### Função getCountries()
+
+Após isso, podemos importar esse pacote em nossa View e criar a função `getCountries()`.
+
+```dart
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
+Future<List<Country>> getCountries() async {
+  final rawResponse = await http.get(
+    Uri.parse('https://restcountries.com/v3.1/all'),
+  );
+
+  final parsedResponse = jsonDecode(utf8.decode(rawResponse.bodyBytes));
+
+  return parsedResponse.map<Country>((map) => Country.fromMap(map)).toList();
+}
+```
+
+O código acima é responsável por chamar a API `restcountries` e parsear ela para o *Model* `Country`:
+
+```dart
+class Country {
+  final String name;
+  final String flag;
+
+  Country({required this.name, required this.flag});
+
+  factory Country.fromMap(Map<String, dynamic> map) {
+    return Country(
+      name: map['translations']['por']['official'] as String,
+      flag: map['flags']['png'] as String,
+    );
+  }
+}
+```
+
+Na função `getCountries()` Utilizamos também o pacote `convert` nativo do Flutter para podermos converter dados *raw* para um `Map<String, dynamic>` para facilitar na criação de nossos objetos.
+
+Dentro da classe `Country` possuimos um construtor que aceita esse `Map<String, dynamic>` e sabe como extrair os dados para a criação do Objeto.
+
+### Criando o layout
+
+Com a função pronta, podemos criar nosso layout:
+
+```dart
+@override
+Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: AppBar(title: const Text('Countries')),
+    body: FutureBuilder<List<Country>>(
+      future: getCountries(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        } else {
+          final countries = snapshot.data!;
+
+          return ListView.builder(
+            itemCount: countries.length,
+            itemBuilder: (context, index) {
+              final country = countries[index];
+
+              return Row(
+                children: [
+                  Image.network(
+                    country.flag,
+                    height: 64,
+                    width: 96,
+                    fit: BoxFit.fill,
+                  ),
+                  const SizedBox(width: 16),
+                  Text(country.name),
+                ],
+              );
+            },
+          );
+        }
+      },
+    ),
+  );
+}
+```
+
+Como dito anteriormente, iremos utilizar o `FutureBuilder`, ele possui duas propriedades importantes: `future` e `builder`. O `future` será a função que deverá ser chamada para construir o layout. E o `builder` é a função que será chamada antes da função `future` retornar um resultado e após ela retornar um resultado.
+
+A função `builder` recebe como parametro um objeto `snapshot`, através desse objeto podemos saber se nossa função `future` já retornou algum resultado ou ainda não. Utilizamos a propriedade `snapshot.hasData` para verificar isso. E caso ainda não possua podemos mostrar um `CircularProgressIndicator`.
+
+Após receber um resultado, podemos montar o layout utilizando um `ListView.builder`, é interessante utilizarmos ele pois é um Widget que consegue construir seus filhos apenas quando necessário. Dessa forma, sendo bastante performático.
+
+Com o auxilio de `Row`, `Image.network`, `SizedBox` e `Text`, podemos criar nosso card para a visualização de nossos países.

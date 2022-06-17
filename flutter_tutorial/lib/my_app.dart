@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-
-import 'my_home_page.dart';
+import 'package:flutter_tutorial/my_countries.dart';
 
 class MyApp extends StatelessWidget {
   const MyApp({Key? key}) : super(key: key);
@@ -10,7 +9,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Flutter Demo',
       theme: ThemeData(primarySwatch: Colors.blue),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const MyCountries(),
     );
   }
 }
